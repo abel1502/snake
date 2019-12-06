@@ -95,36 +95,36 @@ class Vector2:
     def __add__(self, other):
         if isinstance(other, Vector2):
             return Vector2(self.x + other.x, self.y + other.y)
-        raise NotImplementedError()
+        return NotImplemented
     
     def __sub__(self, other):
         if isinstance(other, Vector2):
             return self + -other
-        raise NotImplementedError()
+        return NotImplemented
     
     def __mul__(self, other):
         if isinstance(other, Vector2):
-            return Vector2(self.x * other.x, self.y * other.y)
+            return self.x * other.x + self.y * other.y
         if isinstance(other, (int, float)):
             return Vector2(self.x * other, self.y * other)
-        raise NotImplementedError()
+        return NotImplemented
     
     def __matmul__(self, other):
         if isinstance(other, Vector2):
             return self.x * other.y + self.y * other.x
-        raise NotImplementedError()
+        return NotImplemented
     
     def __truediv__(self, other):
         if isinstance(other, (int, float)):
             return self * (1 / other)
-        raise NotImplementedError()
+        return NotImplemented
     
     def __rmul__(self, other):
         if isinstance(other, Vector2):
             return self * other
         if isinstance(other, (int, float)):
             return self * other
-        raise NotImplementedError()
+        return NotImplemented
     
     def __iadd__(self, other):
         self = self + other
@@ -135,11 +135,8 @@ class Vector2:
         return self
     
     def __imul__(self, other):
+        assert isinstance(other, (int, float))
         self = self * other
-        return self
-    
-    def __imatmul__(self, other):
-        self = self @ other
         return self
     
     def __itruediv__(self, other):
@@ -156,14 +153,14 @@ class Vector2:
     
     def __eq__(self, other):
         if not isinstance(other, Vector2):
-            raise NotImplementedError()
+            return NotImplemented
         return self.x == other.x and self.y == other.y
     
     def __ne__(self, other):
         return not self == other
     
     def __lt__(self, other):
-        return self.toRPhi() < other.toRPhi()
+        return self.toPolar() < other.toPolar()
     
     def __le__(self, other):
         return self < other or self == other
@@ -411,11 +408,33 @@ class BoxTexture(Texture):
 
 
 class Collider(Component):
-    pass
+    @staticmethod
+    def collide(first, second):
+        assert isinstance(first, Collider)
+        assert isinstance(second, Collider)
+        res = first._collide(second)
+        if res is not NotImplemented:
+            return res
+        res = second._collide(first)
+        if res is not NotImplemented:
+            return res
+        raise NotImplementedError()
 
 
 class BoxCollider(Collider):
-    pass
+    def __init__(self, gameObject, size, offset=(0, 0)):
+        super().__init__(gameObject)
+        self.offset = Vector2(offset)
+        self.size = size
+    
+    def getRect(self):
+        pos = round(self.gameObject.transform.getAbsolutePosition() + self.offset)
+        return pygame.Rect(pos.tuple(), self.size)
+    
+    def _collide(self, other):
+        if not isinstance(other, BoxCollider):
+            return NotImplemented
+        return self.getRect().colliderect(other.getRect())
 
 
 class Scene(GameObject):
@@ -443,6 +462,7 @@ class Scene(GameObject):
         tr.broadcastMessage("start")
         while True:
             self.clock.tick(self.fpsLimit)
+            #print(self.clock.get_fps())
             self.drawBuf = []
             for event in pygame.event.get():
                 self.handleEvent(event)
@@ -461,3 +481,6 @@ class Scene(GameObject):
     def stop(self):
         pygame.quit()
         sys.exit()
+
+
+isclose = math.isclose
